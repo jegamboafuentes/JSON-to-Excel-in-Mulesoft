@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="9f2a344b-9c97-468b-9372-f9affc65c958" >
+		<http:listener-connection host="localhost" port="8081"/>
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="7b64951a-4262-4371-8caf-48db589e920f" basePath="api/v2/pokemon/" >
+		<http:request-connection protocol="HTTPS" host="pokeapi.co" />
+	</http:request-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="6ef4300e-6b91-4734-9de4-59b36511cddf" />
+	<http:listener-config name="HTTP_Listener_config1" doc:name="HTTP Listener config" doc:id="732fd6c9-2f06-4db3-91ae-a1b658f10bfa" >
+		<http:listener-connection host="0.0.0.0" port="8083" />
+	</http:listener-config>
+	<flow name="pokemontoexcelFlow" doc:id="5f402a54-8eea-43e3-8cc2-eac2ffa03070" >
+		<http:listener doc:name="Listener" doc:id="855494f0-b9d6-48f7-b74f-e94bbe64c60b" config-ref="HTTP_Listener_config1" path="/myapi/{pokemon}"/>
+		<set-variable value="#[attributes.uriParams.pokemon]" doc:name="Set Variable" doc:id="3c604388-a621-4782-8632-3c21decd002a" variableName="pokemonName" />
+		<http:request method="GET" doc:name="Request" doc:id="adecbe62-f200-4662-aeb3-9b1ef11ff024" config-ref="HTTP_Request_configuration" path="#[vars.pokemonName]">
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="069300d3-ec17-46b2-b64c-656165d0b749">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/xlsx
+---
+{
+	root: [{
+		base_experience: payload.base_experience as String,
+		height: payload.height as String,
+		id: payload.id as String,
+		is_default: payload.is_default as String,
+		location_area_encounters: payload.location_area_encounters,
+		name: payload.name,
+		order: payload.order as String,
+		weight: payload.weight as String
+	}],
+	abilities: flatten ( payload.abilities map ( ability , indexOfAbility ) -> ability ),
+	forms: flatten ( payload.forms map ( form , indexOfForm ) -> form
+),
+	game_indices: flatten ( payload.game_indices map ( gameindex , indexOfGameindex ) -> gameindex
+),
+	held_items: flatten ( payload.held_items map ( helditem , indexOfHelditem ) -> helditem
+),
+	moves: flatten ( payload.moves map ( move , indexOfMove ) -> move
+),
+	past_types: flatten ( payload.past_types map ( pasttype , indexOfPasttype ) -> pasttype
+),
+	species: [payload.species],
+	sprites: [payload.sprites],
+	stats: payload.stats map ( stat , indexOfStat ) -> stat,
+	types: payload.types map ( vtype , indexOfVtype ) -> vtype
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<file:write doc:name="Write" doc:id="b8490d11-dd3d-48d4-a8f7-9f4f9b667aa9" config-ref="File_Config" path="/Users/jegamboafuentes/AnypointStudio/studio-workspace/pokemontoexcel/output/output.xlsx"/>
+	</flow>
+</mule>
